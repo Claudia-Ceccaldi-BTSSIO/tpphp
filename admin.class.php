@@ -1,23 +1,28 @@
 <?php
-//Inclus la class Utilisateur
+// Inclus la classe Utilisateur et le gestionnaire de session
 require_once 'utilisateur.class.php';
 require_once 'session.php';
+
+// La classe Admin étend la classe Utilisateur
 class Admin extends Utilisateur {
     protected static $bannir = []; // Liste statique des utilisateurs bannis
 
     // Constructeur : initialise les propriétés de l'instance avec des valeurs spécifiques pour Admin
-    public function __construct($nom, $mp, $ur) {
-        parent::__construct(strtoupper($nom), $mp, $ur); // Appel au constructeur parent avec le nom en majuscules
-    }
-
-    // Affiche le nom d'utilisateur (hérité, redéfini pour afficher en majuscules)
-    public function getNom_utilisateur() {
-        return $this->nom_utilisateur;
+    public function __construct($nom_utilisateur, $motdepasse, $user_region) {
+        // Appel au constructeur parent avec le nom en majuscules
+        parent::__construct(strtoupper($nom_utilisateur), $motdepasse, $user_region);
+        $this->setPrixAbo(); // Définit le prix de l'abonnement dès la création de l'objet
     }
 
     // Définit le prix de l'abonnement en fonction de la région
-    public function setPrixAbo() {
-        $this->prix_abo = $this->user_region === 'Sud' ? Utilisateur::ABONNEMENT / 6 : Utilisateur::ABONNEMENT / 3;
+    protected function setPrixAbo() {
+        // Utilisation de la méthode getUserRegion() pour accéder à la propriété protected user_region
+        $this->prix_abo = $this->getUserRegion() === 'Sud' ? Utilisateur::ABONNEMENT / 6 : Utilisateur::ABONNEMENT / 3;
+    }
+
+    // Obtient le nom d'utilisateur en utilisant la méthode héritée de la classe parente
+    public function getNomUtilisateur() {
+        return parent::getNomUtilisateur();
     }
 
     // Ajoute un utilisateur à la liste des bannis
@@ -27,7 +32,7 @@ class Admin extends Utilisateur {
 
     // Affiche la liste des utilisateurs bannis
     public function getBannir() {
-        echo 'Utilisateurs bannis par ' . $this->nom_utilisateur . ' : ' . implode(', ', self::$bannir);
+        echo 'Utilisateurs bannis par ' . $this->getNomUtilisateur() . ' : ' . implode(', ', self::$bannir);
     }
 }
 ?>
