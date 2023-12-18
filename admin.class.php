@@ -1,7 +1,7 @@
 <?php
 //Inclus la class Utilisateur
 require_once 'utilisateur.class.php';
-require_once 'session.php';
+
 class Admin extends Utilisateur {
     protected static $bannir = []; // Liste statique des utilisateurs bannis
 
