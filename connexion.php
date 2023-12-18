@@ -1,29 +1,25 @@
 <?php
-// Inclut le fichier de connexion à la base de données et démarre la session
+// Inclut le fichier de connexion à la base de données
 require_once 'config.php';
-session_start(); 
 
 // Message de succès lorsqu'un nouvel utilisateur est ajouté
 $succesMessage = "";
 $errorMessage = "";
 
 // Traitement du formulaire de connexion
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['nom_utilisateur']) && isset($_POST['motdepasse'])) {
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $nom_inscription = $connexion->real_escape_string($_POST['nom_utilisateur']);
     $mp_inscription = $_POST['motdepasse'];
     // Vérification des informations soumises par les utilisateurs contre celles de la base de données
-    $query = "SELECT id, motdepasse FROM Utilisateurs WHERE nom_utilisateur = '$nom_inscription'";
+    $query = "SELECT motdepasse FROM Utilisateurs WHERE nom_utilisateur = '$nom_inscription'";
     $result = $connexion->query($query);
 
     if ($result->num_rows > 0) {
         $row = $result->fetch_assoc();
         if (password_verify($mp_inscription, $row['motdepasse'])) {
             // Connexion réussie
-            $_SESSION['utilisateur_id'] = $row['id']; // Stocker l'ID de l'utilisateur dans la session
-            $_SESSION['utilisateur_id'] = $nom_inscription; // Stocker le nom d'utilisateur dans la session
-
-            // Redirection vers la page d'accueil
-            header("Location: accueil.php");
+            // Utilise JavaScript pour rediriger vers la page d'accueil
+            echo '<script>window.location.href = "accueil.php";</script>';
             exit;
         } else {
             // Échec de la connexion
@@ -35,9 +31,27 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['nom_utilisateur']) && 
     }
 }
 
-// Le reste de votre code...
-?>
+// Traitement du formulaire d'ajout d'utilisateur
+if (isset($_POST['nom_utilisateur']) && isset($_POST['motdepasse'])) {
+    $nom_utilisateur = $connexion->real_escape_string($_POST['nom_utilisateur']);
+    $motdepasse = password_hash($_POST['motdepasse'], PASSWORD_DEFAULT);
 
+    // Insertion de l'utilisateur dans la base de données en utilisant une requête préparée
+    $stmt = $connexion->prepare("INSERT INTO Utilisateurs (nom_utilisateur, motdepasse) VALUES (?, ?)");
+    $stmt->bind_param("ss", $nom_utilisateur, $motdepasse);
+
+    if ($stmt->execute()) {
+        // Inscription réussie
+        $succesMessage = "Nouvel utilisateur ajouté avec succès";
+    } else {
+        // Échec de l'inscription
+        $errorMessage = "Échec de l'inscription : " . $stmt->error;
+    }
+    $stmt->close();
+}
+
+$connexion->close();
+?>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -48,12 +62,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['nom_utilisateur']) && 
     <link rel="stylesheet" href="main.css"> 
 </head>
 <body>
-    <form action="accueil.php" method="post">
+    <form action="connexion.php" method="post">
         <!-- Connexion -->
         <label for="nom_utilisateur">Nom d'utilisateur: </label>
-        <input type="text" name="nom_utilisateur" placeholder="" required>
+        <input type="text" name="nom_utilisateur" placeholder="Nom d'utilisateur" required>
         <label for="motdepasse">Mot de passe : </label>
-        <input type="password" name="motdepasse" placeholder="" required>
+        <input type="password" name="motdepasse" placeholder="Mot de passe" required>
         <input type="submit" value="Se connecter">
     </form>
     
