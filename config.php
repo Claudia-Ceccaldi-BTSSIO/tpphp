@@ -5,17 +5,19 @@ $username = 'root';
 $dbpassword = '';
 $database = 'tp2phppoo';
 
-// Connexion à la base de données en utilisant mysqli
-$connexion = new mysqli($servername, $username, $dbpassword, $database);
+try {
+    // Connexion à la base de données en utilisant PDO
+    $maconnexion = new PDO("mysql:host=$servername;dbname=$database", $username, $dbpassword);
+    // Configuration du mode d'erreur PDO à Exception
+    $maconnexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-// Vérification de la connexion 
-if ($connexion->connect_error) {
-    die('Erreur de connexion à la base de données : ' . $connexion->connect_error);
+    // Configuration des caractères d'encodage
+    $maconnexion->exec("SET NAMES 'utf8mb4'");
+
+    // Activation du mode strict pour les requêtes
+    $maconnexion->exec("SET sql_mode = 'STRICT_ALL_TABLES'");
+
+} catch(PDOException $e) {
+    echo "Connection échouée: " . $e->getMessage();
 }
-
-// Configuration des caractères d'encodage pour éviter les problèmes d'encodage
-$connexion->set_charset('utf8mb4');
-
-// Activation du mode strict pour les requêtes
-$connexion->query("SET sql_mode = 'STRICT_ALL_TABLES';");
 ?>
