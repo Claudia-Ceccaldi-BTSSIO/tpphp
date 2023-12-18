@@ -1,39 +1,41 @@
 <?php
-
 // Inclut le fichier de configuration de la base de données
 require_once 'config.php';
 
 // Définition des variables
 $nom_inscription = "";
 $mp_inscription = "";
-$succesMessage = ""; // Définition de la variable succesMessage
+$succesMessage = "";
+$errorMessage = ""; 
 
-//Traitement du formulaire
+// Traitement du formulaire
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $nom_inscription = $connexion->real_escape_string($_POST['nom_utilisateur']);
+    // Récupération des données du formulaire
+    $nom_inscription = $_POST['nom_utilisateur'];
     $mp_inscription = password_hash($_POST['motdepasse'], PASSWORD_DEFAULT);
-    $region_inscription = $connexion->real_escape_string($_POST['region']); // Récupération de la région
+    $region_inscription = $_POST['region'];
 
     // Préparation de la requête d'insertion
-    $query = "INSERT INTO Utilisateurs (nom_utilisateur, motdepasse, user_region) VALUES (?, ?, ?)";
-    $stmt = $connexion->prepare($query);
-    $stmt->bind_param("sss", $nom_inscription, $mp_inscription, $region_inscription);
-
+    $query = $maconnexion->prepare('INSERT INTO Utilisateurs (nom_utilisateur, motdepasse, user_region) VALUES (:nom_utilisateur, :motdepasse, :region)');
+    
+    // Liaison des paramètres
+    $query->bindParam(':nom_utilisateur', $nom_inscription, PDO::PARAM_STR);
+    $query->bindParam(':motdepasse', $mp_inscription, PDO::PARAM_STR);
+    $query->bindParam(':region', $region_inscription, PDO::PARAM_STR);
+    
     // Exécution de la requête préparée
-    if ($stmt->execute()) {
-        // Inscription réussie
+    if ($query->execute()) {
         $succesMessage = 'Inscription réussie';
-        // Redirection vers la page de connexion ou une autre page
-    header("Location: connexion.php");
-    exit;
+        header("Location: connexion.php");
+        exit;
     } else {
-        // Échec de l'inscription
-        echo 'Échec de l\'inscription : ' . $stmt->error;
+        // Récupération et affichage du message d'erreur de la base de données
+        $errorInfo = $maconnexion->errorInfo();
+        $errorMessage = 'Échec de l\'inscription : ' . $errorInfo[2];
     }
-    $stmt->close();
 }
-
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -46,13 +48,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <body>
 <style>
 body {
-    background-color: black; /* Bleu pastel très clair pour le fond */
-    color: #333; /* Gris foncé pour le texte */
+    background-color: black;
+    color: #333; 
     font-family: 'Helvetica Neue', Arial, sans-serif;
 }
 
 header {
-    background-color: #a7c7e7; /* Bleu pastel pour l'en-tête */
+    background-color: #a7c7e7; 
     color: #333;
     padding: 15px 0;
     text-align: center;
@@ -70,13 +72,13 @@ header h1 {
 }
 
 .book {
-    background-color: #e7eff6; /* Bleu pastel très clair pour les cartes de livre */
-    border: 1px solid #d0dae3; /* Bordure légèrement plus foncée */
+    background-color: #e7eff6; 
+    border: 1px solid #d0dae3;
     color: #333;
     margin: 10px;
     padding: 20px;
     width: 300px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Ombre douce pour la profondeur */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .book img {
@@ -92,8 +94,8 @@ footer {
     padding: 15px 0;
 }
 .btn_conn {
-    display: block; /* Rendre le lien comme un bloc */
-    margin: 0 auto; /* Auto-marge pour centrer horizontalement */
+    display: block; 
+    margin: 0 auto; 
 }
 .center-container{
     background-color: #007bff;
