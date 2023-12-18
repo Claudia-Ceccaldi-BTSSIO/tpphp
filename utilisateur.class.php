@@ -1,7 +1,6 @@
 <?php
 // Classe abstraite Utilisateur : Base pour les classes dérivées d'utilisateurs.
 abstract class Utilisateur {
-    // Propriétés protégées : accessibles uniquement dans la classe et les classes dérivées.
     protected $nom_utilisateur;   
     protected $motdepasse;       
     protected $user_region;      
@@ -10,36 +9,61 @@ abstract class Utilisateur {
     // Constante publique pour un prix d'abonnement de base.
     public const ABONNEMENT = 15;
 
-    // Constructeur : initialisation des propriétés de l'instance.
-    public function __construct($nom, $mp, $ur){
-        $this->nom_utilisateur = $nom; 
-        $this->motdepasse = password_hash($mp, PASSWORD_DEFAULT); // Hache le mot de passe
-        $this->user_region = $ur; 
+    // Constructeur : initialisation des propriétés de l'instance avec une boucle foreach.
+    public function __construct($nom_utilisateur, $motdepasse, $user_region) {
+        
+        // Le tableau associatif contient les méthodes 'set' en tant que clés et les valeurs à assigner en tant que valeurs.
+        $props = [
+            'setNomUtilisateur' => $nom_utilisateur,
+            'setMotdepasse' => $motdepasse,
+            'setUserRegion' => $user_region,
+        ];
+        // Utilisation d'une boucle foreach pour assigner les valeurs.
+        foreach ($props as $method => $value) {
+            if (method_exists($this, $method)) {
+                $this->$method($value); // Appel dynamique de la méthode 'set'.
+            }
+        }
+    }
+
+    // Méthodes 'set' pour chaque propriété.
+    protected function setNomUtilisateur($value) {
+        $this->nom_utilisateur = $value;
+    }
+
+    protected function setMotdepasse($value) {
+        $this->motdepasse = password_hash($value, PASSWORD_DEFAULT);
+    }
+
+    protected function setUserRegion($value) {
+        $this->user_region = $value;
     }
 
     // Méthode abstraite : doit être définie dans les classes dérivées.
-    abstract public function setPrixAbo();
+    abstract protected function setPrixAbo();
 
-    // Retourne le nom d'utilisateur.
-    public function getNom_utilisateur(){
-        echo $this->nom_utilisateur;
+    // Méthodes 'get' pour accéder aux propriétés.
+    public function getNomUtilisateur() {
+        return $this->nom_utilisateur;
     }
 
-    // Affiche le prix de l'abonnement.
-    public function getPrixAbo(){
-        echo $this->prix_abo;
+    public function getMotdepasse() {
+        return $this->motdepasse;
     }
+
+    public function getUserRegion() {
+        return $this->user_region;
+    }
+
+    public function getPrixAbo() {
+        return $this->prix_abo;
+    }
+
+
     public function __toString() {
         return "Nom d'utilisateur: " . $this->nom_utilisateur . ", Région: " . $this->user_region . ", Prix Abonnement: " . $this->prix_abo;
     }
-    // Méthode pour obtenir le mot de passe 
-    public function getMotDePasse() {
-        return $this->motdepasse; // Retourne le mot de passe haché
-    }
-    // Méthode pour obtenir la région de l'utilisateur
-    public function getUserRegion() {
-    return $this->user_region;
-    }
+
 
 }
 ?>
@@ -54,15 +78,15 @@ abstract class Utilisateur {
 <style>
         
         body {
-            background-color: #000; /* Fond noir */
-            color: #fff; /* Texte blanc */
+            background-color: #000; 
+            color: #fff; 
         }
         /* Style pour les messages de succès et d'erreur */
         .success {
-            color: #00f; /* Bleu */
+            color: #00f; 
         }
         .error {
-            color: #f00; /* Rouge */
+            color: #f00; 
         }
     </style>
 </body>
