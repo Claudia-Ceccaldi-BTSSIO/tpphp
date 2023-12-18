@@ -1,38 +1,72 @@
 <?php
 // Inclut le fichier de configuration de la base de données
 require_once 'config.php';
+// Inclut le fichier de gestion de session
 require_once 'session.php';
-session_start();
-// Message de succès lorsqu'un nouvel utilisateur est ajouté
+// Inclut les classes Utilisateur et UtilisateurManager
+require_once 'utilisateur.class.php';
+require_once 'utilisateurManager.class.php';
+
+// Vérifie si l'ID de l'utilisateur est enregistré dans la session
+if (isset($_SESSION['utilisateur_id'])) {
+    // Récupère l'ID de l'utilisateur
+    $utilisateur_id = $_SESSION['utilisateur_id'];
+
+    // Prépare et exécute la requête pour obtenir le nom d'utilisateur
+    $query = $maconnexion->prepare("SELECT nom_utilisateur FROM Utilisateurs WHERE id = :id");
+    $query->bindParam(':id', $utilisateur_id, PDO::PARAM_INT);
+    $query->execute();
+
+    // Récupère le résultat
+    $row = $query->fetch(PDO::FETCH_ASSOC);
+
+    if ($row) {
+        $nom_utilisateur = $row['nom_utilisateur'];
+    } else {
+        $nom_utilisateur = "Utilisateur inconnu"; // Gestion si l'utilisateur n'est pas trouvé
+    }
+} else {
+    // Rediriger vers la page de connexion si aucun utilisateur n'est connecté
+    header("Location: connexion.php");
+    exit;
+}
+
+// Initialisation de l'instance de UtilisateurManager avec la connexion PDO
+$utilisateurManager = new UtilisateurManager($maconnexion);
+
+// Initialisation des messages
 $succesMessage = "";
 $errorMessage = "";
 
 // Traitement du formulaire d'ajout d'utilisateur
 if (isset($_POST['nom_utilisateur']) && isset($_POST['motdepasse'])) {
-    $nom_utilisateur = $connexion->real_escape_string($_POST['nom_utilisateur']);
-    $motdepasse = password_hash($_POST['motdepasse'], PASSWORD_DEFAULT);
+    // Création d'un nouvel utilisateur
+    $abonne = new Abonne($_POST['nom_utilisateur'], $_POST['motdepasse'], ""); 
 
-    // Insertion de l'utilisateur dans la base de données en utilisant une requête préparée
-    $stmt = $connexion->prepare("INSERT INTO Utilisateurs (nom_utilisateur, motdepasse) VALUES (?, ?)");
-    $stmt->bind_param("ss", $nom_utilisateur, $motdepasse);
-
-    if ($stmt->execute()) {
-        // Inscription réussie
+    // Tentative d'ajout de l'utilisateur à la base de données
+    try {
+        $utilisateurManager->add($abonne);
         $succesMessage = "Nouvel utilisateur ajouté avec succès";
-    } else {
-        // Échec de l'inscription
-        $errorMessage = "Échec de l'inscription : " . $stmt->error;
+    } catch (Exception $e) {
+        $errorMessage = "Erreur lors de l'ajout de l'utilisateur : " . $e->getMessage();
     }
-    $stmt->close();
 }
 
-// Récupére les utilisateurs depuis la base de données
-$queryUtilisateurs = "SELECT * FROM Utilisateurs";
-$resultUtilisateurs = $connexion->query($queryUtilisateurs);
+// Récupération des utilisateurs pour affichage
+$users = []; 
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['afficher_utilisateurs'])) {
+    $queryUtilisateurs = "SELECT * FROM Utilisateurs";
+    $resultUtilisateurs = $maconnexion->query($queryUtilisateurs);
+    $users = $resultUtilisateurs->fetchAll(PDO::FETCH_ASSOC);
+}
 
-// Récupére les commentaires depuis la base de données
-$queryCommentaires = "SELECT * FROM Commentaires";
-$resultCommentaires = $connexion->query($queryCommentaires);
+// Préparation de la requête pour récupérer les commentaires
+$queryCommentaires = "SELECT * FROM CommentairesLivres";
+$stmtCommentaires = $maconnexion->prepare($queryCommentaires);
+$stmtCommentaires->execute();
+
+// Récupération des commentaires
+$commentaires = $stmtCommentaires->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -43,11 +77,11 @@ $resultCommentaires = $connexion->query($queryCommentaires);
     <link rel="stylesheet" href="main.css">
 </head>
 <body>
-<?php if (isset($_SESSION['utilisateur_id'])) : ?>
-    <div class="user-greeting">
-        Bonjour, <?php echo htmlspecialchars($_SESSION['utilisateur_id']); ?>
-    </div>
-<?php endif; ?>
+<?php if (isset($nom_utilisateur)) : ?>
+        <div class="user-greeting">
+            Bonjour, <?php echo htmlspecialchars($nom_utilisateur); ?>
+        </div>
+    <?php endif; ?>
 
     <style>
 body {
@@ -98,10 +132,31 @@ footer {
     padding: 15px 0;
 }
 </style>
-    <header>
+<header>
         <h1>Bienvenue dans Notre Librairie</h1>
     </header>
 
+    <!-- Bouton pour afficher les utilisateurs -->
+    <form method="post">
+        <input type="submit" name="afficher_utilisateurs" value="Afficher les Utilisateurs">
+    </form>
+
+    <?php
+     // Affichage des utilisateurs dans un tableau
+     if (count($users) > 0) {
+        echo "<table border='1'>";
+        echo "<tr><th>ID</th><th>Nom d'utilisateur</th><th>Mot de passe</th><th>Région</th></tr>";
+        foreach ($users as $user) {
+            echo "<tr>";
+            echo "<td>" . htmlspecialchars($user['id']) . "</td>";
+            echo "<td>" . htmlspecialchars($user['nom_utilisateur']) . "</td>";
+            echo "<td>" . htmlspecialchars($user['motdepasse']) . "</td>";
+            echo "<td>" . htmlspecialchars($user['user_region']) . "</td>"; 
+            echo "</tr>";
+        }
+        echo "</table>";
+    }
+    ?>
     <section class="book-display">
         <!-- Livre 1 -->
         <article class="book">
@@ -111,8 +166,8 @@ footer {
                 de cette famille, le roman aborde les thèmes de l’amour, de la tolérance et de l’apprentissage1</p>
             <div class="comment-section">
             <form action="traitement_commentaire.php" method="post">
-            <input type="hidden" name="book_id" value="01"> <!-- Remplacer par l'ID réel du livre -->
-            <textarea name="comment" placeholder="Votre commentaire"></textarea>
+            <input type="hidden" name="book_id" value="01"> 
+            <textarea name="commentaire" placeholder="Votre commentaire"></textarea>
             <input type="submit" value="Envoyer le commentaire">
         </form>
             </div>
@@ -126,8 +181,8 @@ footer {
                 Le livre a été publié en 1931 et a remporté le Prix Pulitzer de la fiction en 1932.</p>
             <div class="comment-section">
             <form action="traitement_commentaire.php" method="post">
-            <input type="hidden" name="book_id" value="ID_DU_LIVRE_1"> <!-- Remplacer par l'ID réel du livre -->
-            <textarea name="comment" placeholder="Votre commentaire"></textarea>
+            <input type="hidden" name="book_id" value="ID_DU_LIVRE_1"> 
+            <textarea name="commentaire" placeholder="Votre commentaire"></textarea>
             <input type="submit" value="Envoyer le commentaire">
             </form>
             </div>
@@ -137,15 +192,37 @@ footer {
         <article class="book">
             <img src="images/dragon.jpg" alt="Couverture du livre 3">
             <h2>Le fils du dragon</h2>
-            <p></p>
+            <p>Pearl Buck savait-elle, lorsqu'elle décrivit l'existence de cette famille de paysans 
+                chinois, humbles et travailleurs, qu'elle annonçait prophétiquement l'immense évolution 
+                de la Chine au cours de ces dernières années ? Lorsque Lao quitte, avec sa jeune femme,
+                 la ferme de ses parents pour rejoindre l'armée de patriotes qui résiste à l'envahisseur,
+                  devine-t-il que sa rupture avec des habitudes millénaires prélude à la formidable épopée
+                   que nous avons connue depuis ? En tout cas, la missionnaire américaine qui, au risque 
+                   de sa vie, protège les jeunes Chinoises des outrages de la soldatesque ennemie, 
+                   sait que cet acte de charité chrétienne demeurera le seul titre de gloire de l'Occident dans une Chine qui va retrouver le sens de sa grandeur et de sa puissance.</p>
             <div class="comment-section">
             <form action="traitement_commentaire.php" method="post">
-            <input type="hidden" name="book_id" value="ID_DU_LIVRE_1"> <!-- Remplacer par l'ID réel du livre -->
-            <textarea name="comment" placeholder="Votre commentaire"></textarea>
+            <input type="hidden" name="book_id" value="ID_DU_LIVRE_1"> 
+            <textarea name="commentaire" placeholder="Votre commentaire"></textarea>
             <input type="submit" value="Envoyer le commentaire">
             </form>
             </div>
         </article>
+    </section>
+    <!-- Affichage des commentaires -->
+    <section class="comment-section">
+        <h2>Commentaires sur les Livres :</h2>
+        <?php
+        if (count($commentaires) > 0) {
+            echo "<ul>";
+            foreach ($commentaires as $commentaire) {
+                echo "<li>" . htmlspecialchars($commentaire['commentaire']) . "</li>";
+            }
+            echo "</ul>";
+        } else {
+            echo 'Aucun commentaire disponible.';
+        }
+        ?>
     </section>
     <nav>
         <!-- lien déconnexion -->
@@ -158,9 +235,6 @@ footer {
 </html>
 
 <?php
-// Ferme les résultats des requêtes
-$resultUtilisateurs->close();
-
-// Ferme la connexion à la base de données 
-$connexion->close();
+// Fermeture de la connexion à la base de données
+$maconnexion = null;
 ?>
