@@ -1,6 +1,6 @@
 <?php
 require_once 'utilisateur.class.php';
-require_once 'session.php';
+
 // La classe Abonne étend la classe Utilisateur
 class Abonne extends Utilisateur {
     // Constructeur de la classe Abonne
